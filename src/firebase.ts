@@ -105,7 +105,11 @@ export function handleFirestoreError(
 export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
+  } catch (error: any) {
+    // If permission-denied is returned, it confirms the client successfully reached Firestore servers
+    if (error?.code === 'permission-denied' || error?.message?.includes('insufficient permissions')) {
+      return;
+    }
     if (
       error instanceof Error &&
       error.message.includes('the client is offline')
@@ -124,17 +128,32 @@ export async function signInWithGoogle(): Promise<User> {
 
     // Save/update user profile document in Firestore
     const userDocRef = doc(db, 'users', user.uid);
-    await setDoc(
-      userDocRef,
-      {
+    const existingSnap = await getDocFromServer(userDocRef).catch(() => null);
+
+    if (!existingSnap || !existingSnap.exists()) {
+      // First time sign-in: create user profile with initial createdAt
+      await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email || '',
-        displayName: user.displayName || 'Anonymous Student',
-        photoURL: user.photoURL || '',
+        displayName: (user.displayName || 'Anonymous Student').slice(0, 128),
+        photoURL: (user.photoURL || '').slice(0, 1024),
         createdAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+      });
+    } else {
+      // Returning user: update displayName and photoURL, strictly preserving existing createdAt to satisfy immutability rules
+      const existingData = existingSnap.data();
+      await setDoc(
+        userDocRef,
+        {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: (user.displayName || 'Anonymous Student').slice(0, 128),
+          photoURL: (user.photoURL || '').slice(0, 1024),
+          createdAt: existingData.createdAt,
+        },
+        { merge: true }
+      );
+    }
 
     return user;
   } catch (error) {
@@ -155,19 +174,19 @@ export async function saveAnalysisToFirestore(
   try {
     const analysisDocRef = doc(db, 'users', userId, 'analyses', diagnosis.id);
     await setDoc(analysisDocRef, {
-      id: diagnosis.id,
-      userId: userId,
-      language: diagnosis.language,
-      title: diagnosis.title,
-      category: diagnosis.category,
-      severity: diagnosis.severity,
-      severityReason: diagnosis.severityReason || '',
-      explanation: diagnosis.explanation || '',
-      likelyCause: diagnosis.likelyCause || '',
-      inputCode: diagnosis.inputCode || '',
-      inputError: diagnosis.inputError || '',
-      correctedCode: diagnosis.correctedCode || '',
-      createdAt: new Date(diagnosis.timestamp).toISOString(),
+      id: diagnosis.id.slice(0, 128),
+      userId: userId.slice(0, 128),
+      language: String(diagnosis.language || 'python').slice(0, 32),
+      title: String(diagnosis.title || 'Error Analysis').slice(0, 256),
+      category: String(diagnosis.category || 'Unknown').slice(0, 64),
+      severity: String(diagnosis.severity || 'Medium').slice(0, 32),
+      severityReason: String(diagnosis.severityReason || '').slice(0, 1000),
+      explanation: String(diagnosis.explanation || '').slice(0, 5000),
+      likelyCause: String(diagnosis.likelyCause || '').slice(0, 2000),
+      inputCode: String(diagnosis.inputCode || '').slice(0, 10000),
+      inputError: String(diagnosis.inputError || '').slice(0, 5000),
+      correctedCode: diagnosis.correctedCode ? String(diagnosis.correctedCode).slice(0, 10000) : '',
+      createdAt: new Date(diagnosis.timestamp || Date.now()).toISOString(),
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
