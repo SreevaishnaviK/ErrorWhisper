@@ -1,0 +1,6 @@
+{
+  "name": "ErrorWhisper",
+  "description": "AI-powered debugging and learning companion for beginner programmers and college students. Understand the error. Learn the fix.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
