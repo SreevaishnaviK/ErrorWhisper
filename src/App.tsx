@@ -10,6 +10,7 @@ import {
   saveAnalysisToFirestore,
   deleteAnalysisFromFirestore,
   subscribeToUserAnalyses,
+  activeFirebaseConfig,
 } from './firebase';
 import { Navbar } from './components/Navbar';
 import { InputWorkspace } from './components/InputWorkspace';
@@ -155,9 +156,18 @@ export default function App() {
       setAuthSuccessMsg(`Welcome, ${signedInUser.displayName || 'Student'}! Your history is now synced with Firestore.`);
       setTimeout(() => setAuthSuccessMsg(null), 4000);
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setAuthError(err.message || 'Failed to sign in with Google');
+      if (err.code === 'auth/popup-closed-by-user') {
+        return;
       }
+      if (err.code === 'auth/unauthorized-domain') {
+        const currentDomain = window.location.hostname;
+        const targetProject = activeFirebaseConfig.projectId;
+        setAuthError(
+          `Unauthorized Domain: "${currentDomain}" is not in the Authorized Domains list for Firebase project "${targetProject}". Please add "${currentDomain}" to Firebase Console -> Authentication -> Settings -> Authorized Domains for project "${targetProject}".`
+        );
+        return;
+      }
+      setAuthError(err.message || 'Failed to sign in with Google');
     }
   };
 
