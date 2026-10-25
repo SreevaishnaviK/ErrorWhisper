@@ -32,8 +32,9 @@ RUN npm install --omit=dev --ignore-scripts || npm install --omit=dev
 # Copy compiled frontend assets from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy server entry point
+# Copy server entry point and API handlers
 COPY --from=builder /app/server.ts ./server.ts
+COPY --from=builder /app/api ./api
 
 # Cloud Run injects $PORT at runtime (defaults to 3000 locally)
 EXPOSE 3000
