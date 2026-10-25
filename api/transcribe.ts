@@ -1,3 +1,3 @@
-import { handleTranscribe } from './_handlers';
+import { handleTranscribe } from './_handlers.ts';
 
 export default handleTranscribe;

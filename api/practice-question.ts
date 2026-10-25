@@ -1,3 +1,3 @@
-import { handlePracticeQuestion } from './_handlers';
+import { handlePracticeQuestion } from './_handlers.ts';
 
 export default handlePracticeQuestion;

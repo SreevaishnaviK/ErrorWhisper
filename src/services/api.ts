@@ -87,10 +87,17 @@ async function parseResponseBody<T>(res: Response, fallbackErrorMessage: string)
     throw new Error(errorMsg);
   }
 
-  // If status is 2xx OK but data is null (e.g. empty response or invalid JSON received on a 200)
+  // If status is 2xx OK but data is null (e.g. empty response or HTML received on a 200 rewrite)
   if (data === null) {
     if (!rawText || rawText.trim().length === 0) {
       return {} as T;
+    }
+    const isHtml =
+      rawText.startsWith('<') ||
+      rawText.toLowerCase().includes('<!doctype') ||
+      rawText.toLowerCase().includes('<html');
+    if (isHtml) {
+      throw new Error('Received HTML page instead of JSON API response. Verify that your API route is deployed on Vercel.');
     }
     throw new Error('Received non-JSON response from server.');
   }
